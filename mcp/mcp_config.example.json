@@ -1,0 +1,39 @@
+{
+  "mcpServers": {
+    "overleaf-free-tier": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@netique/overleaf-mcp"
+      ],
+      "env": {
+        "OVERLEAF_SESSION_COOKIE": "<YOUR_OVERLEAF_SESSION_COOKIE_DO_NOT_COMMIT>",
+        "OVERLEAF_PROJECT_ID": "<YOUR_OVERLEAF_PROJECT_ID>"
+      },
+      "disabled": false
+    },
+    "overleaf-git-bridge": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "overleaf-mcp"
+      ],
+      "env": {
+        "OVERLEAF_GIT_URL": "https://git.overleaf.com/<YOUR_OVERLEAF_PROJECT_ID>",
+        "OVERLEAF_GIT_TOKEN": "<YOUR_OVERLEAF_GIT_TOKEN_DO_NOT_COMMIT>"
+      },
+      "disabled": true
+    },
+    "github": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-github"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "<YOUR_GITHUB_PAT_DO_NOT_COMMIT>"
+      },
+      "disabled": false
+    }
+  }
+}

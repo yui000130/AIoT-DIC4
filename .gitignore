@@ -1,0 +1,29 @@
+# Local reference clone (DIC-3)
+_ref_dic3/
+
+# Secrets & local MCP overrides (never commit credentials)
+.env
+.env.*
+mcp/mcp_config.json
+
+# LaTeX build artifacts
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+*.toc
+*.lof
+*.lot
+*.nav
+*.snm
+*.vrb
+
+# Python & OS
+__pycache__/
+*.py[cod]
+.DS_Store
+Thumbs.db
