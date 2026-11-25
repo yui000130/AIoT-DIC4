@@ -1,10 +1,15 @@
-# Local reference clone (DIC-3)
-_ref_dic3/
+# OS & Editor
+.DS_Store
+*.swp
+*.swo
 
-# Secrets & local MCP overrides (never commit credentials)
+# Sensitive credentials & environment files
 .env
 .env.*
-mcp/mcp_config.json
+*.key
+*.pem
+projects.json
+*token*
 
 # LaTeX build artifacts
 *.aux
@@ -16,14 +21,7 @@ mcp/mcp_config.json
 *.out
 *.synctex.gz
 *.toc
-*.lof
-*.lot
-*.nav
-*.snm
-*.vrb
 
-# Python & OS
-__pycache__/
-*.py[cod]
-.DS_Store
-Thumbs.db
+# Local reference clones
+_ref_dic3/
+_ref_anna0831/

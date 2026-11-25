@@ -1,0 +1,301 @@
+\documentclass[conference]{IEEEtran}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+
+\begin{document}
+
+\title{Multibagger Scout: A Point-in-Time AI Agent with Program-of-Thoughts Verification for Long-Horizon Equity Screening in the Taiwan Stock Market}
+
+\author{
+\IEEEauthorblockN{Yan-Ting Hsu, Yi-An Chen, and Ya-Jhu You}
+\IEEEauthorblockA{Department of Computer Science and Engineering, National Chung Hsing University, Taichung, Taiwan}
+}
+
+\maketitle
+
+\begin{abstract}
+Retail participation in the Taiwan stock market reached a record 14.827 million accounts by October 2026, yet long-term equity wealth creation remains extremely concentrated. Century-scale empirical evidence shows that just 46 of 29,754 U.S.\ stocks generated half of the USD 91 trillion in net shareholder wealth, while in Taiwan a single firm (TSMC) accounts for over 40\% of total market capitalization and small-to-mid-cap electronics stocks averaged 171\% returns during the 2025--2026 AI supply-chain cycle. Identifying such winners \emph{ex ante} is notoriously difficult: 79\% of active U.S.\ large-cap funds underperformed in 2025 with zero five-year top-quartile persistence, survivorship bias inflates backtest returns by 30--100\%, and large language models (LLMs) suffer from look-ahead leakage and numerical hallucinations ($>$10--20\% error rates on multi-variable financial calculations).
+
+To address these challenges, we propose \textbf{Multibagger Scout}, a point-in-time (PiT) AI research agent for long-horizon equity screening in Taiwan. Using FinMind financial statements, monthly revenues, and price histories, the system defines a composite target label---ranking in the top 5\% of five-year dividend-adjusted total return with revenue CAGR $\ge 10\%$---while explicitly retaining delisted stocks to eliminate survivorship bias. We compare LightGBM, logistic regression, and single-factor baselines under a strict Program-of-Thoughts (PoT) separation: deterministic tools execute all numerical computations, whereas the LLM is restricted to tool orchestration, SHAP feature summarization, and structured pro/con synthesis, followed by a programmatic verifier. Literature benchmarks show PoT eliminates 88\% of arithmetic errors and LLM news analysis carries predictive value. We design a 2013--2020 feature window with three walk-forward test rounds evaluated via Precision@$K$, PR-AUC, and report numerical accuracy. Preliminary data pipeline feasibility has been verified; full backtest validation against the 5\% random base rate remains ongoing. This system is a research prototype and does not constitute investment advice.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Point-in-Time Equity Screening, AI Agent, Program of Thoughts, Survivorship Bias, LightGBM, Taiwan Stock Market
+\end{IEEEkeywords}
+
+\section{Introduction}
+
+\subsection{Background and Motivation}
+Long-term equity returns exhibit severe positive skewness. According to the 2026 century-long study by Bessembinder~\cite{b1}, across 29,754 U.S.\ common stocks from 1926 to 2025, nearly 60\% destroyed shareholder wealth over their lifetimes (median buy-and-hold return of $-6.9\%$), and only 46 companies generated half of the USD 91 trillion in net wealth creation---nearly double the concentration observed in 2018 (89 companies for half of USD 43 trillion). A similar concentration characterizes the Taiwan equity market: by October 2026, cumulative investor accounts reached 14,827,469 (with 56.3\% of new October accounts opened by investors aged 30 or younger)~\cite{b11}, while TSMC alone represents over 40\% of total market capitalization~\cite{b12}. In 2025, the Taiwan benchmark surged $+25.7\%$ ($+5,928.5$ points, reaching TWD 94 trillion in market value), driven disproportionately by AI supply-chain names (e.g., PCB and memory suppliers posting $+483\%$ to $+686\%$ gains), whereas the OTC small-cap index rose only 7.97\%~\cite{b14}. In 2026, approximately 90\% of electronics stocks outperforming the market had paid-in capital below TWD 8 billion, with small/mid-cap electronics averaging 171\% returns~\cite{b13}.
+
+\subsection{Core Challenges}
+Despite strong investor demand for systematic screening tools, four structural challenges hinder \emph{ex-ante} identification of long-horizon winners (``multibaggers''):
+\begin{enumerate}
+    \item \textbf{Ex-Ante Winner Rarity and Active Management Failure:} Ex-post traits of winning stocks do not trivially translate into ex-ante selection alpha. The S\&P Global SPIVA Year-End 2025 Scorecard reports that 79\% of active U.S.\ large-cap funds underperformed the S\&P 500, and zero large-cap funds maintained top-quartile performance across the five-year 2021--2025 window~\cite{b2}.
+    \item \textbf{Survivorship and Look-Ahead Biases:} Backtests omitting delisted firms systematically overstate annualized returns by 1--3 percentage points (30--100\% cumulative inflation over 30 years)~\cite{b15}. An open-source audit using \texttt{pitbacktest} demonstrated that 0 out of 41 major delisted or acquired U.S.\ stocks could be retrieved accurately from free Yahoo Finance feeds~\cite{b15}. In the LLM era, look-ahead bias is compounded by pre-training data leakage~\cite{b5,b6}.
+    \item \textbf{Black-Box Overfitting:} Complex machine learning models trained on unconstrained financial panels often fit regime-specific noise rather than durable fundamental drivers.
+    \item \textbf{LLM Numerical Hallucination and Trading Instability:} While LLMs exhibit predictive value in textual news analysis~\cite{b3}, they are unreliable calculators. The FAITH benchmark~\cite{b4} shows that even frontier models suffer 10--20\% error rates on multi-variable financial computations (and near-0\% accuracy for smaller models). Furthermore, live trading benchmarks such as Alpha Arena~\cite{b7} revealed that 31 of 38 autonomous AI trading accounts lost money due to overtrading and unstable decision-making.
+\end{enumerate}
+
+\subsection{Research Questions and Contributions}
+To address these gaps, we investigate three research questions:
+\begin{itemize}
+    \item \textbf{RQ1:} Under strict point-in-time (PiT) constraints and delisted-stock inclusion, can interpretable tabular models outperform the 5\% random base rate and simple single-factor rules in ranking five-year Taiwan multibaggers?
+    \item \textbf{RQ2:} How sensitive is out-of-sample ranking quality to walk-forward macro regimes (2018--2020) and feature specifications?
+    \item \textbf{RQ3:} Does a Program-of-Thoughts (PoT) separation with automated verification eliminate numerical hallucinations in generated investment research briefs?
+\end{itemize}
+
+The main contributions of this paper are threefold:
+\begin{enumerate}
+    \item \textbf{A Point-in-Time (PiT) Taiwan Equity Dataset Design:} Utilizing FinMind historical filings, monthly revenues, and dividend-adjusted prices aligned to an annual April 30 decision cutoff, explicitly incorporating delisted firms.
+    \item \textbf{Dual-Criterion Target Formulation and Model Comparison:} Defining a strict composite label (top 5\% five-year dividend-adjusted return AND revenue CAGR $\ge 10\%$) and benchmarking LightGBM, logistic regression, single-factor rules, and raw LLM baselines.
+    \item \textbf{Verifiable PoT Agent Architecture:} Decoupling deterministic financial computation from LLM narrative synthesis, enforced by a three-round programmatic numerical verifier.
+\end{enumerate}
+
+\subsection{Paper Organization}
+The remainder of this paper is organized as follows. Section~\ref{sec:related} reviews related literature on multibagger factor investing, machine learning stock selection, and financial LLM agents, summarized in a structured comparison matrix. Section~\ref{sec:method} presents the proposed Multibagger Scout architecture, formal mathematical definitions, algorithms, and an end-to-end execution walk-through. Section~\ref{sec:exp} details the walk-forward experimental setup, hyperparameter tuning protocol, evaluation metrics, and preliminary feasibility checks. Section~\ref{sec:conclusion} concludes the paper with key takeaways, limitations, and future work.
+
+\section{Related Work}
+\label{sec:related}
+
+\subsection{Domain Factor Investing and Multibagger Characteristics}
+Empirical asset pricing has long documented return skewness. Bessembinder~\cite{b1} established that long-term wealth creation is concentrated in a tiny fraction of listed firms. Focusing specifically on extreme winners, Yartseva (2025)~\cite{b10} analyzed 464 U.S.\ ten-baggers from 2009 to 2024 (averaging 26$\times$ over 15 years, including 24 hundred-baggers) and identified seven recurring traits: (1) small initial scale (median market cap $\approx$ USD 350M), (2) attractive valuation (high book-to-market, $\text{P/B} < 0.91$ with positive earnings yielding 34.7\% annual excess return vs.\ 12.8\% for low B/M), (3) positive operating margin, (4) high ROA coupled with disciplined asset growth (firms whose asset growth outpaced EBITDA growth suffered a 22.8 percentage-point next-year return penalty), (5) strong free cash flow (FCF) yield, (6) technical entry near 12-month lows following pullbacks, and (7) stricter filtering during rising-rate regimes. However, conditioning on ex-post ten-baggers does not guarantee ex-ante precision when applied to an entire market universe.
+
+\subsection{Machine Learning for Equity Selection in Taiwan}
+Tree-based gradient boosting (e.g., LightGBM) and regularized linear models have been widely applied to cross-sectional return prediction. Recent Taiwan market studies (e.g., NSYSU 2025 comparing Elastic Net, LightGBM, and DNN on 2014--2024 TWSE general-industry stocks; NCCU multi-factor and ML momentum studies) demonstrate that non-linear feature interactions improve short-to-medium-term ranking, yet rarely evaluate five-year compound multibagger horizons with full delisted-stock accounting.
+
+\subsection{Financial LLM Agents and Program-of-Thoughts Reasoning}
+Lopez-Lira and Tang (2026)~\cite{b3} proved in the \emph{Journal of Financial Economics} that GPT-4 headline sentiment predicts next-day stock returns (especially for small-cap and negative news), though alpha decays as adoption widens. Multi-agent frameworks such as TradingAgents v5~\cite{b8} simulate analyst, researcher, and trader personas; however, reproducibility audits reveal high variance across temperature and random seeds~\cite{b8}, and live competitions like Alpha Arena~\cite{b7} show raw LLM trading agents frequently incur losses.
+
+To curb arithmetic hallucinations documented in FAITH~\cite{b4} and long-document QA benchmarks, Program of Thoughts (PoT) delegates computation to external code execution. Recent Agentic RAG financial QA frameworks (2026)~\cite{b9} report that PoT reasoning eliminates 88\% of arithmetic errors compared to end-to-end LLM generation.
+
+\subsection{Structured Literature Comparison}
+Table~\ref{tab:related} contrasts representative approaches across five dimensions.
+
+\begin{table*}[t]
+\centering
+\caption{Structured Comparison of Related Approaches}
+\label{tab:related}
+\begin{tabularx}{\textwidth}{@{}lXXXX@{}}
+\toprule
+\textbf{Approach / Study} & \textbf{Core Mechanism} & \textbf{PiT / Bias Control} & \textbf{Numerical Verification} & \textbf{Interpretability \& Key Limitation} \\
+\midrule
+Domain Factor Rules (Yartseva~\cite{b10}) & Static financial thresholds (P/B, FCF, ROA) & Often ex-post conditioned on winners & Deterministic (formulaic) & High transparency; ignores non-linear interactions \\
+Tabular ML Screening (TWSE ML Studies) & LightGBM / Elastic Net on cross-sections & Varies; many omit delisted stocks & Deterministic (code-based) & Moderate via SHAP; lacks qualitative pro/con synthesis \\
+Multi-Agent LLM (TradingAgents~\cite{b8}, Alpha Arena~\cite{b7}) & Persona debate \& direct order generation & Vulnerable to pre-training leakage~\cite{b5,b6} & None (LLM generates numbers) & Rich narrative; seed-sensitive and prone to losses \\
+\textbf{Multibagger Scout (Proposed)} & \textbf{LightGBM + PoT Agent + Verifier} & \textbf{Strict Apr 30 PiT + delisted} & \textbf{3-round PoT code verifier} & \textbf{SHAP + kNN analogs + verified brief} \\
+\bottomrule
+\end{tabularx}
+\end{table*}
+
+\section{Proposed Methodology: Multibagger Scout}
+\label{sec:method}
+
+\subsection{Problem Formulation and Mathematical Definitions}
+Let $\mathcal{U}_t$ denote the investable universe of Taiwan listed (TWSE) and OTC (TPEX) equities at annual decision date $t$ (set to April 30 of year $y$, following the statutory deadline for Taiwan annual and Q1 financial disclosures), including all firms that subsequently delist during $(t, t+5\text{y}]$.
+
+\subsubsection{Dividend-Adjusted Wealth Return}
+For stock $i$ at decision date $t$, let $P_{i,t}^{\text{adj}}$ be the dividend- and split-adjusted closing price. The five-year cumulative return is defined as:
+\begin{equation}
+R_{i,t}^{(5\text{y})} = \frac{P_{i,t+5\text{y}}^{\text{adj}}}{P_{i,t}^{\text{adj}}} - 1
+\end{equation}
+For firms delisted at $\tau \in (t, t+5\text{y}]$, $P_{i,t+5\text{y}}^{\text{adj}}$ is replaced by the final realizable last-traded adjusted price at $\tau$, preventing survivorship truncation.
+
+\subsubsection{Five-Year Revenue CAGR}
+Let $\text{Rev}_{i,t}$ denote trailing twelve-month (TTM) revenue known at date $t$:
+\begin{equation}
+\text{CAGR}_{i,t}^{\text{Rev}} = \left(\frac{\text{Rev}_{i,t+5\text{y}}}{\text{Rev}_{i,t}}\right)^{1/5} - 1
+\end{equation}
+
+\subsubsection{Point-in-Time (PiT) Constraint}
+Every feature vector $\mathbf{x}_{i,t}$ is constructed strictly from the information set $\mathcal{F}_t$ available on or before $t$:
+\begin{equation}
+\mathbf{x}_{i,t} = \Phi\left(\left\{D_{i,s} \;\middle|\; s_{\text{pub}}(D_{i,s}) \le t\right\}\right)
+\end{equation}
+where $s_{\text{pub}}(D_{i,s})$ denotes the official public filing or monthly revenue announcement timestamp (10th of the following month in Taiwan).
+
+\subsubsection{Composite Target Label}
+Let $Q_{0.95}(R_t^{(5\text{y})})$ be the 95th percentile of five-year returns across universe $\mathcal{U}_t$. Stock $i$ is labeled as a multibagger ($Y_{i,t} = 1$) if and only if:
+\begin{equation}
+Y_{i,t} = \mathbb{I}\left(R_{i,t}^{(5\text{y})} \ge Q_{0.95}(R_t^{(5\text{y})}) \;\wedge\; \text{CAGR}_{i,t}^{\text{Rev}} \ge 0.10\right)
+\end{equation}
+requiring both extreme relative wealth creation and fundamental top-line expansion.
+
+\subsection{System Architecture and Core Modules}
+Multibagger Scout adopts a layered architecture comprising seven modules:
+\begin{enumerate}
+    \item \textbf{User Interface (UI):} Accepts screening queries (top-$K$ candidates at date $t$, or single-stock deep dive).
+    \item \textbf{Planner:} Orchestrates tool invocations without performing arithmetic.
+    \item \textbf{Data Tool:} Queries FinMind APIs (financial statements, monthly revenue, adjusted prices, delisted registry) under PiT filtering.
+    \item \textbf{Model Tool:} Runs trained LightGBM / Logistic Regression models, computes TreeSHAP attributions, and retrieves $k$-nearest historical analogs ($k$NN).
+    \item \textbf{Rules Engine:} Enforces exclusion criteria (minimum liquidity, data completeness, listing tenure) and factor sanity checks.
+    \item \textbf{Verifier:} Programmatically cross-checks every numeric value in the draft report against Data Tool and Model Tool outputs.
+    \item \textbf{Reporter:} Formats the verified evidence into a structured brief containing bullish drivers, bearish risks, historical analogs, and disclaimers.
+\end{enumerate}
+
+\subsection{Feature Engineering and Exclusion Rules}
+Aligned with Yartseva~\cite{b10} and Taiwan accounting standards, we construct 10 core PiT features:
+\begin{itemize}
+    \item \textbf{Scale \& Valuation:} Log Market Cap, Price-to-Book (P/B), Earnings Yield.
+    \item \textbf{Profitability \& Efficiency:} Operating Margin, Return on Assets (ROA), Gross Margin stability.
+    \item \textbf{Growth \& Capital Discipline:} TTM Revenue Growth, Asset Growth minus EBITDA Growth (capturing over-investment risk~\cite{b10}), Free Cash Flow (FCF) Yield.
+    \item \textbf{Price Structure:} 12-month price drawdown / proximity to 12-month low.
+\end{itemize}
+Exclusion rules remove stocks with missing core financials at $t$, extreme illiquidity, or fewer than 12 months of trading history prior to $t$.
+
+\subsection{Program-of-Thoughts (PoT) Separation and Algorithms}
+Following PoT principles~\cite{b9}, the LLM never computes ratios, returns, or ranks. Algorithms~\ref{alg:pit} and~\ref{alg:agent} formalize dataset construction and agent execution.
+
+\begin{algorithm}[t]
+\caption{Point-in-Time (PiT) Dataset Construction}
+\label{alg:pit}
+\small
+\renewcommand{\algorithmicrequire}{\textbf{Input:}}
+\renewcommand{\algorithmicensure}{\textbf{Output:}}
+\begin{algorithmic}[1]
+\REQUIRE Decision years $\mathcal{Y} = \{2013, \dots, 2020\}$, FinMind tables
+\ENSURE PiT panel dataset $\mathcal{D} = \{(\mathbf{x}_{i,t}, Y_{i,t})\}$
+\FOR{each year $y \in \mathcal{Y}$}
+    \STATE $t \leftarrow \text{April 30 of year } y$
+    \STATE $\mathcal{U}_t \leftarrow$ active TWSE/TPEX stocks on $t$ (incl.\ delisted)
+    \FOR{each stock $i \in \mathcal{U}_t$}
+        \STATE Filter filings, revenues, prices with $s_{\text{pub}} \le t$
+        \IF{$\textsc{Liquid}(i,t)$ \textbf{and} $\textsc{Complete}(i,t)$}
+            \STATE $\mathbf{x}_{i,t} \leftarrow \textsc{Features}(i, t)$
+            \STATE $R_{i,t}^{(5\text{y})} \leftarrow \textsc{Return}_{5\text{y}}(i, t)$
+            \STATE $\text{CAGR}_{i,t}^{\text{Rev}} \leftarrow \textsc{RevCAGR}_{5\text{y}}(i, t)$
+        \ENDIF
+    \ENDFOR
+    \STATE $q_{95} \leftarrow Q_{0.95}\!\left(R_{i,t}^{(5\text{y})}\right)$ over valid $i \in \mathcal{U}_t$
+    \STATE $Y_{i,t} \leftarrow \mathbb{I}\!\left(R_{i,t}^{(5\text{y})} \ge q_{95} \;\wedge\; \text{CAGR}_{i,t}^{\text{Rev}} \ge 0.10\right)$
+    \STATE Append valid $(\mathbf{x}_{i,t}, Y_{i,t})$ to $\mathcal{D}$
+\ENDFOR
+\RETURN $\mathcal{D}$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[t]
+\caption{Multibagger Scout Agent \& 3-Round Verification}
+\label{alg:agent}
+\small
+\renewcommand{\algorithmicrequire}{\textbf{Input:}}
+\renewcommand{\algorithmicensure}{\textbf{Output:}}
+\begin{algorithmic}[1]
+\REQUIRE Query ($\text{stock\_id}$, $t$), $\text{max\_rounds} = 3$
+\ENSURE Verified Research Brief $B_{\text{verified}}$
+\STATE $M_{\text{raw}} \leftarrow \textsc{DataTool}(\text{stock\_id}, t)$ \hfill $\triangleright$ Planner dispatch
+\STATE $(s_i, \Phi_i, A_i) \leftarrow \textsc{ModelTool}(M_{\text{raw}})$ \hfill $\triangleright$ Score, SHAP, $k$NN
+\STATE $W_i \leftarrow \textsc{RulesEngine}(M_{\text{raw}})$ \hfill $\triangleright$ Risk flags
+\STATE $B_{\text{draft}} \leftarrow \textsc{Reporter}(\{M_{\text{raw}}, \Phi_i, A_i, W_i\})$ \hfill $\triangleright$ LLM synthesis
+\FOR{$r = 1$ \textbf{to} $\text{max\_rounds}$}
+    \STATE $\text{nums} \leftarrow \textsc{ParseNums}(B_{\text{draft}})$
+    \STATE $\text{err} \leftarrow \textsc{Verify}(\text{nums}, \{M_{\text{raw}}, \Phi_i, A_i\})$
+    \IF{$\text{err} = \emptyset$}
+        \RETURN $B_{\text{draft}}$
+    \ELSE
+        \STATE $B_{\text{draft}} \leftarrow \textsc{FixBrief}(B_{\text{draft}}, \text{err})$
+    \ENDIF
+\ENDFOR
+\RETURN $\textsc{Fallback}(\{M_{\text{raw}}, \Phi_i, A_i, W_i\})$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{End-to-End Case Walk-Through}
+To illustrate operational execution, consider a single-stock query for a Taiwan semiconductor candidate at decision date $t = \text{2020-04-30}$:
+\begin{enumerate}
+    \item \textbf{Planner $\rightarrow$ Data Tool:} The Planner invokes \texttt{get\_pit\_financials} with \texttt{cutoff="2020-04-30"}. The tool retrieves FY2019 audited statements (filed by March 31, 2020) and March 2020 monthly revenue (announced by April 10, 2020), returning deterministic metrics (ROA, P/B, FCF yield, TTM revenue growth).
+    \item \textbf{Model Tool:} LightGBM scores the candidate in the top decile; TreeSHAP identifies FCF yield ($+$) and low asset-growth-minus-EBITDA-growth ($+$) as positive drivers, while elevated P/B ($-$) acts as a drag. The $k$NN module retrieves the 3 nearest historical profiles from 2013--2017.
+    \item \textbf{Verifier \& Reporter:} The LLM synthesizes a balanced pro/con brief citing exact tool outputs. The Verifier parses every percentage and ratio in the draft; if any figure deviates from tool ground truth beyond rounding tolerance ($\pm 0.01\%$), it triggers a correction round (up to 3 rounds) or falls back to a deterministic template.
+\end{enumerate}
+
+\section{Experimental Design and Evaluation Protocol}
+\label{sec:exp}
+
+\subsection{Dataset and Walk-Forward Simulation Setup}
+The full sample spans 2013--2020 annual feature snapshots (decision date April 30 each year), with five-year forward return windows extending through 2025. We employ a strict three-round expanding-window walk-forward protocol:
+\begin{itemize}
+    \item \textbf{Round 1:} Train on 2013--2017 $\rightarrow$ Test at 2018-04-30 (2018--2023 outcome).
+    \item \textbf{Round 2:} Train on 2013--2018 $\rightarrow$ Test at 2019-04-30 (2019--2024 outcome).
+    \item \textbf{Round 3:} Train on 2013--2019 $\rightarrow$ Test at 2020-04-30 (2020--2025 outcome).
+\end{itemize}
+These three test cohorts span distinct volatility regimes: the 2018 U.S.--China trade war, the 2019 market rebound, and the 2020 COVID-19 V-shaped recovery. We also note an important regime boundary: Taiwan's 2023--2026 AI supercycle (and sudden structural shocks such as the November 6, 2026 single-day drop of 3,737 points triggered by AI data-center policy uncertainty~\cite{b12}) underscores that models trained on pre-AI cycles require ongoing out-of-sample monitoring.
+
+\subsection{Baselines and Hyperparameter Tuning Protocol}
+We benchmark Multibagger Scout against six baselines: (1) LightGBM (primary non-linear tabular model), (2) L2-regularized Logistic Regression, (3) Single-Factor Rules (Lowest P/B; Highest ROE), (4) Taiwan 50 ETF (0050) market benchmark, (5) Random Sampling (expected $\le 5\%$ base rate), and (6) Direct-LLM Zero-Shot Baseline (raw prompting without PoT tools).
+
+To prevent test-set leakage, zero hyperparameter tuning is permitted on test folds (2018--2020). All hyperparameters are selected exclusively via time-ordered cross-validation within each training window:
+\begin{itemize}
+    \item \textbf{LightGBM:} \texttt{max\_depth} $\in \{3, 4, 5\}$, \texttt{num\_leaves} $\in \{7, 15, 31\}$, \texttt{learning\_rate} $\in \{0.01, 0.05\}$, \texttt{min\_child\_samples} $\in \{20, 50\}$, \texttt{reg\_lambda} $\in \{1.0, 5.0\}$, with early stopping on the last training year.
+    \item \textbf{Logistic Regression:} L2 penalty $C \in \{0.01, 0.1, 1.0, 10.0\}$.
+    \item \textbf{$k$NN Analog Retriever:} $k \in \{3, 5, 10\}$ using standardized Euclidean distance.
+\end{itemize}
+
+\subsection{Evaluation Metrics}
+Performance is evaluated across ranking quality, risk, and report fidelity:
+\begin{itemize}
+    \item \textbf{Precision@$K$ ($K=10, 20, 50$) and Recall@50:} Fraction of top-$K$ ranked stocks achieving $Y_{i,t}=1$, benchmarked against the $\le 5\%$ random base rate.
+    \item \textbf{PR-AUC:} Precision-Recall Area Under Curve, appropriate for imbalanced $\sim 5\%$ positive class prevalence.
+    \item \textbf{Maximum Drawdown (MDD):} Downside risk of equal-weighted top-$K$ portfolios.
+    \item \textbf{Report Numerical Accuracy \& Evidence Coverage:} Percentage of numerical claims in generated briefs matching tool ground truth (target: $\sim 100\%$ via 3-round Verifier, building on PoT's 88\% error-reduction benchmark~\cite{b9}).
+\end{itemize}
+
+\subsection{Preliminary Feasibility and Data Availability Audit}
+At the current proposal stage, full walk-forward backtest metrics (Precision@50, PR-AUC) are scheduled for execution rather than reported as completed results. However, two foundational checks have been established:
+\begin{enumerate}
+    \item \textbf{Pipeline Feasibility:} Preliminary data ingestion (\texttt{verify\_data.py}) and point-in-time financial cross-checks against TSMC disclosures confirm API schema compatibility and alignment with April 30 cutoff rules.
+    \item \textbf{Delisted-Stock Coverage Audit Plan:} Motivated by \texttt{pitbacktest} showing 0/41 delisted U.S.\ stocks available in Yahoo Finance~\cite{b15}, our first experimental milestone explicitly quantifies FinMind's historical coverage rate for delisted TWSE/TPEX tickers and documents any residual survivorship gaps.
+\end{enumerate}
+
+\section{Conclusion and Future Work}
+\label{sec:conclusion}
+
+We presented \textbf{Multibagger Scout}, a point-in-time AI research agent designed to identify long-horizon high-growth equities in the Taiwan stock market. By combining a delisted-inclusive PiT dataset, a dual-criterion five-year multibagger label, interpretable tabular models (LightGBM/LR with TreeSHAP), and a Program-of-Thoughts (PoT) verification loop, the system addresses both financial backtest biases and LLM numerical hallucinations. Unlike black-box ML screeners or unconstrained LLM trading agents that suffer from numerical errors (10--20\%+ in FAITH~\cite{b4}) and high failure rates (31/38 losing accounts in Alpha Arena~\cite{b7}), Multibagger Scout enforces strict separation of concerns: deterministic code computes all metrics and verifies outputs, while the LLM provides structured, auditable pro/con reasoning.
+
+Key limitations include potential gaps in free-tier delisted-stock histories on FinMind, regime shift risks between the 2013--2020 windows and the 2023--2026 AI supercycle, and the absence of transaction-cost modeling in pure ranking metrics. Future work will complete the three-round walk-forward backtest, audit FinMind delisted coverage, and incorporate Taiwan-specific institutional chip-flow and news-sentiment features under strict PiT timestamps.
+
+\emph{Disclaimer: Multibagger Scout is an academic research prototype for quantitative information synthesis and does not constitute financial or investment advice.}
+
+\begin{thebibliography}{99}
+
+\bibitem{b1} H.~Bessembinder, ``One Hundred Years in the U.S. Stock Markets,'' SSRN Working Paper 6438198, 2026. [Online]. Available: \url{https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6438198}
+
+\bibitem{b2} S\&P Dow Jones Indices, ``U.S. Persistence Scorecard Year-End 2025 / SPIVA Year-End 2025,'' 2026. [Online]. Available: \url{https://www.spglobal.com/spdji/en/spiva/article/us-persistence-scorecard/}
+
+\bibitem{b3} A.~Lopez-Lira and Y.~Tang, ``Can ChatGPT forecast stock price movements?'' \emph{Journal of Financial Economics}, vol.~184, 2026. [Online]. Available: \url{https://econpapers.repec.org/article/eeejfinec/v_3a184_3ay_3a2026_3ai_3ac_3as0304405x26001066.htm}
+
+\bibitem{b4} ``FAITH: A Framework for Assessing Intrinsic Tabular Hallucinations in Finance,'' arXiv:2508.05201, 2025. [Online]. Available: \url{https://ar5iv.labs.arxiv.org/html/2508.05201}
+
+\bibitem{b5} Z.~Gao, W.~Jiang, and Y.~Yan, ``A Test of Lookahead Bias in LLM Forecasts,'' ABFER Annual Conference, 2026. [Online]. Available: \url{https://abfer.org/media/abfer-events-2026/annual-conference/papers-tech-ai/AC26P10024_A-Test-of-Lookahead-Bias-in-LLM-Forecasts.pdf}
+
+\bibitem{b6} A.~Didisheim, M.~Fraschini, and L.~Somoza, ``AI's predictable memory in financial analysis,'' \emph{Economics Letters}, vol.~256, 2025. [Online]. Available: \url{https://econpapers.repec.org/article/eeeecolet/v_3a256_3ay_3a2025_3ai_3ac_3as0165176525004392.htm}
+
+\bibitem{b7} Trading Agent Stack, ``Alpha Arena results: 31 of 38 AI accounts lost money,'' 2026. [Online]. Available: \url{https://tradingagentstack.com/alpha-arena-results/}
+
+\bibitem{b8} Y.~Xiao et al., ``TradingAgents v5,'' arXiv:2412.20138, 2025. [Online]. Available: \url{https://arxiv.org/html/2412.20138v5}
+
+\bibitem{b9} ``Agentic RAG for Financial Document QA: Program-of-Thoughts reasoning reduces arithmetic errors by 88\%,'' arXiv:2605.05409, 2026. [Online]. Available: \url{https://arxiv.org/pdf/2605.05409v1}
+
+\bibitem{b10} Hong Kong Economic Journal (HKEJ), ``Summary of Yartseva (2025) seven-factor study on U.S. ten-baggers,'' 2026. [Online]. Available: \url{https://www.hkej.com/features/article/2626047643/}
+
+\bibitem{b11} Central News Agency (CNA), ``Taiwan stock market cumulative accounts reach 14.827 million in October 2026,'' Nov.~2, 2026. [Online]. Available: \url{https://www.cna.com.tw/news/afe/202611020015.aspx}
+
+\bibitem{b12} Focus Taiwan, ``Taiex plunges over 3,700 points as TSMC hits limit down,'' Nov.~6, 2026. [Online]. Available: \url{https://focustaiwan.tw/business/202611060006}
+
+\bibitem{b13} CommonWealth Magazine, ``AI supply chain dividend diffusion: small/mid-cap electronics average 171\% return,'' Oct.~2026. [Online]. Available: \url{https://www.cw.com.tw/article/5143275}
+
+\bibitem{b14} Central News Agency (CNA), ``Taiwan stock market 2025 close: +25.7\%, TWD 94 trillion market cap,'' Dec.~31, 2025. [Online]. Available: \url{https://news.pchome.com.tw/finance/cna/20251231/index-17671852682807418003.html}
+
+\bibitem{b15} \texttt{pitbacktest}, ``Empirical survivorship bias audit on free equity data feeds,'' 2026. [Online]. Available: \url{https://pypi.org/project/pitbacktest/0.3.0/}
+
+\end{thebibliography}
+
+\end{document}
