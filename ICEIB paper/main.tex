@@ -310,6 +310,7 @@ Metric & Agent & Direct LLM & Diff.\ [95\% CI] \\
 Numerical accuracy & 1.000 & 0.623 & $+0.377$ [0.359, 0.397] \\
 Required-field coverage & 1.000 & 0.996 & $+0.004$ [0.000, 0.011] \\
 Evidence citation rate & 1.000 & 0.965 & $+0.035$ [0.026, 0.047] \\
+Rule-flag accuracy$^{\dagger}$ & 1.000 & 0.854 & $+0.146$ [0.106, 0.189] \\
 \midrule
 Template fallback (agent) & \multicolumn{3}{l}{10.4\% of 270 reports (5.6\% / 11.1\% / 14.4\% by round)} \\
 Mean verification rounds & \multicolumn{3}{l}{1.53} \\
@@ -317,7 +318,7 @@ Mean verification rounds & \multicolumn{3}{l}{1.53} \\
 \end{tabular}
 \end{table}
 
-\textbf{E4 (RQ3).} Table~\ref{tab:e4}: all 540 reports were completed. The direct LLM fills almost every field but computes about 38\% of the figures wrongly; the gap is nearly identical in each round (0.376, 0.372, 0.384). The agent's accuracy remains 1.000 when template reports are excluded, so the result is not driven by fallbacks; the price is that 10.4\% of reports fail all three verification rounds, and three samples fall back in all repetitions.
+\textbf{E4 (RQ3).} Table~\ref{tab:e4}: all 540 reports were completed. $^{\dagger}$Rule-flag accuracy (share of the two red-flag decisions matching the answer key) was not among the pre-specified E4 metrics but is computed from the same answer key; we report it as a supplementary metric. The direct LLM fills almost every field but computes about 38\% of the figures wrongly; the gap is nearly identical in each round (0.376, 0.372, 0.384). The agent's accuracy remains 1.000 when template reports are excluded, so the result is not driven by fallbacks; the price is that 10.4\% of reports fail all three verification rounds, and three samples fall back in all repetitions.
 
 \subsection{Effectiveness and Threats (V)}
 By the pre-specified criteria, RQ3 is answered clearly, whereas RQ1 is answered only partially: LightGBM shows ranking skill in two of three overlapping rounds, with 22--31 positives per round, so one additional hit in the top 20 changes Precision@20 by 0.05. E4 checks only the 11 key figures and rule decisions, not the quality of the prose, and uses one LLM version. Delisted firms lack some financial statements in FinMind, delisting proceeds are approximated by the last trade, and FinMind does not provide restatement history.
