@@ -20,8 +20,9 @@ context: |
   Writing & Verification Constraints:
   - Follow the A-to-Z SOP checklist in `專題設計規範檢核.md` and cite verified
     sources from `Multibagger Scout A–F 最新研究證據補強.md`.
-  - Never fabricate experimental backtest numbers; clearly distinguish
-    preliminary feasibility checks from scheduled walk-forward backtest metrics.
+  - Never fabricate experimental numbers. Every method detail and result must
+    match DESIGN.md (currently v0.8) and the files in `results/` of the
+    MultibaggerScout-AIagent repository; E1-E4 are complete, E5 is future work.
   - Keep LaTeX compatible with Overleaf (`pdflatex` + `IEEEtran`).
 
 rules:

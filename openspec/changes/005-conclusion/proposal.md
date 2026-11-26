@@ -1,13 +1,13 @@
 # Change 005: Conclusion (W–Z)
 
 ## Goal
-Maintain and refine Section 5 (Conclusion and Future Work) of `ICEIB paper/main.tex` following items W–Z of the A-to-Z SOP.
+Maintain Section V (Conclusion and Future Work) of `ICEIB paper/main.tex` following items W–Z of the A-to-Z SOP. Rewritten 2026-11-26 with actual results.
 
 ## Affected Sections
 - `ICEIB paper/main.tex`: `\section{Conclusion and Future Work}`
 
 ## A–Z Checklist Mapping
-- **W (What proposed):** Summary of Multibagger Scout's PiT dataset, dual-criterion label, LightGBM/TreeSHAP, and PoT verification loop.
-- **X (eXcel):** Contrast against unconstrained LLM agents (FAITH 10–20%+ error, Alpha Arena 31/38 losses) via deterministic computation/verification separation.
-- **Y (Yields):** Expected validation outcomes (to be updated with final Precision@50, PR-AUC, and numerical accuracy numbers).
-- **Z (Zen):** Limitations (FinMind delisted coverage, regime shift, transaction costs), future work (backtest completion, institutional chip-flow/news features), and non-investment-advice disclaimer.
+- **W (What proposed):** Point-in-time delisting-inclusive panel, fundamentally confirmed label, pre-registered walk-forward evaluation, verified PoT agent.
+- **X (eXcel):** 100% vs 62.3% report numerical accuracy; per-stock SHAP, resolved cases and red flags.
+- **Y (Yields):** LightGBM beats random in 2 of 3 rounds; factor rules do not; U.S. ten-bagger traits largely do not transfer; momentum and revenue growth are the most consistent signals.
+- **Z (Zen):** Unstable ranking skill with few positives, TWSE only, one LLM, gross returns; future work: sensitivity analysis (E5), human evaluation, foreign-ownership feature, market-wide screening; not investment advice.
