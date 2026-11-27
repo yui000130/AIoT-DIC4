@@ -22,7 +22,7 @@ context: |
     sources from `Multibagger Scout A–F 最新研究證據補強.md`.
   - Never fabricate experimental numbers. Every method detail and result must
     match DESIGN.md (currently v0.8) and the files in `results/` of the
-    MultibaggerScout-AIagent repository; E1-E4 are complete, E5 is future work.
+    MultibaggerScout-AIagent repository; E1-E4 and E5 (label sensitivity) are complete.
   - Keep LaTeX compatible with Overleaf (`pdflatex` + `IEEEtran`).
 
 rules:

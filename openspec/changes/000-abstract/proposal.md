@@ -1,7 +1,7 @@
 # Change 000: Abstract (A–F)
 
 ## Goal
-Maintain the Abstract and IEEE Keywords of `ICEIB paper/main.tex` following the A–F structure of the A-to-Z SOP. Updated 2026-11-26 to DESIGN.md v0.8 and the completed E1–E4 results.
+Maintain the Abstract and IEEE Keywords of `ICEIB paper/main.tex` following the A–F structure of the A-to-Z SOP. Updated 2026-11-26 to DESIGN.md v0.8 and the completed E1–E4 results; E5 (label sensitivity) added to the experiment sentence the same day.
 
 ## Affected Sections
 - `ICEIB paper/main.tex`: `\begin{abstract}...\end{abstract}` and `\begin{IEEEkeywords}...\end{IEEEkeywords}`

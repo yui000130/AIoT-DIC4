@@ -38,7 +38,7 @@ We present \textbf{Multibagger Scout}, a point-in-time (PiT) research agent that
 % D: Development
 Following Program of Thoughts (PoT)~\cite{b4}, every number is computed by fixed tools---ten prior-year fundamental and price features, a LightGBM score, TreeSHAP attributions, resolved $k$-nearest-neighbour cases and two literature-based red-flag rules---while the LLM only writes the report, which a programmatic verifier checks for up to three rounds before falling back to a template.
 % E: Experiments
-On a delisting-inclusive panel of 6,193 firm-years (2013--2020, 1,171 firms) with three walk-forward test years (2018--2020), we evaluate ranking quality against 1,000 random rankings and factor rules (E1), top-50 portfolios against the 0050 ETF (E2), feature associations (E3), and report accuracy against a direct-LLM baseline over 540 reports (E4).
+On a delisting-inclusive panel of 6,193 firm-years (2013--2020, 1,171 firms) with three walk-forward test years (2018--2020), we evaluate ranking quality against 1,000 random rankings and factor rules (E1), top-50 portfolios against the 0050 ETF (E2), feature associations (E3), report accuracy against a direct-LLM baseline over 540 reports (E4), and sensitivity to the label definition (E5).
 % F: Findings
 LightGBM exceeds the 95th percentile of random PR-AUC in two of three rounds (0.082 and 0.081 vs.\ base rates of 3.9\% and 3.5\%), while logistic regression, low P/B, high ROE and a Yartseva-inspired rule never do; ranking skill is therefore real but unstable. The agent's reports are numerically correct in 100\% of checked figures versus 62.3\% for a direct LLM given the same raw data (difference $+37.7$ points, 95\% CI 35.9--39.7), at the cost of a 10.4\% template-fallback rate. The system is a research prototype and not investment advice.
 \end{abstract}
@@ -74,7 +74,7 @@ Prior work moves from factor studies of extreme winners~\cite{b10,b12} to machin
 Our contributions are: (1) a reproducible PiT panel of TWSE firm-years that includes delisted firms and treats unresolvable labels as \texttt{UNKNOWN} rather than negatives; (2) a pre-registered walk-forward comparison of LightGBM, logistic regression and factor rules against a 1,000-draw random benchmark; and (3) a PoT-style agent whose reports cite evidence identifiers and pass a programmatic verifier, with a controlled comparison against a direct-LLM baseline.
 
 \subsection{Organization (L)}
-Section~\ref{sec:related} reviews related work and summarizes it in a comparison matrix. Section~\ref{sec:method} formalizes the labels and PiT constraints, describes the agent architecture and algorithms, and walks through a real query. Section~\ref{sec:exp} reports the experimental setup and results of E1--E4. Section~\ref{sec:conclusion} concludes with limitations and future work.
+Section~\ref{sec:related} reviews related work and summarizes it in a comparison matrix. Section~\ref{sec:method} formalizes the labels and PiT constraints, describes the agent architecture and algorithms, and walks through a real query. Section~\ref{sec:exp} reports the experimental setup and results of E1--E5. Section~\ref{sec:conclusion} concludes with limitations and future work.
 
 % ---------------- Related Work (M-O) ----------------
 \section{Related Work}
@@ -229,7 +229,7 @@ We replay a cached run for Formosan Polymer (1310) at $t=$ 2018-04-30 (round-1 m
 \end{enumerate}
 
 \subsection{Key Points and Link to Experiments (PK, PL)}
-All design choices---thresholds, features, model parameters, rules, $k$NN and LLM settings---were fixed in the design document before the corresponding experiment was run and were not tuned on test results. E1--E3 test RQ1--RQ2 and E4 tests RQ3.
+All design choices---thresholds, features, model parameters, rules, $k$NN and LLM settings---were fixed in the design document before the corresponding experiment was run and were not tuned on test results. E1--E3 test RQ1--RQ2, E4 tests RQ3, and E5 checks whether the RQ1 answer depends on the label definition.
 
 % ---------------- Experiments (Q-V) ----------------
 \section{Experiments}
@@ -266,7 +266,7 @@ LLM & \texttt{gemini-3.5-flash-lite}, temperature 0, JSON output, cached respons
 \end{table}
 
 \subsection{Metrics and Baselines (Q, R)}
-E1 measures Precision@20, Precision@50, Recall@50 and PR-AUC against each round's actual positive rate. Baselines are logistic regression, lowest P/B, highest ROE, a Yartseva-inspired rule (book-to-market $>0.40$ and ROE $>0$, then equal-weighted ranks of small size, high FCF yield, high book-to-market and low past return), and 1,000 random rankings (seed 42). E2 buys the top 50 stocks equally weighted on the next trading day and holds five years (gross of costs; delisted holdings turn into cash) against 0050 and 1,000 random 50-stock portfolios. E3 reports quintile positive rates and SHAP stability. E4 compares the agent with a \emph{direct LLM} that receives the same raw fields and computation definitions but no tools or verifier, on 90 test-year samples (30 per round) $\times$ 3 repetitions. It scores numerical accuracy of 11 key figures against a program-built answer key, required-field coverage and evidence citation rate, with bootstrap 95\% confidence intervals over samples.
+E1 measures Precision@20, Precision@50, Recall@50 and PR-AUC against each round's actual positive rate. Baselines are logistic regression, lowest P/B, highest ROE, a Yartseva-inspired rule (book-to-market $>0.40$ and ROE $>0$, then equal-weighted ranks of small size, high FCF yield, high book-to-market and low past return), and 1,000 random rankings (seed 42). E2 buys the top 50 stocks equally weighted on the next trading day and holds five years (gross of costs; delisted holdings turn into cash) against 0050 and 1,000 random 50-stock portfolios. E3 reports quintile positive rates and SHAP stability. E4 compares the agent with a \emph{direct LLM} that receives the same raw fields and computation definitions but no tools or verifier, on 90 test-year samples (30 per round) $\times$ 3 repetitions. It scores numerical accuracy of 11 key figures against a program-built answer key, required-field coverage and evidence citation rate, with bootstrap 95\% confidence intervals over samples. E5 retrains LightGBM with the same fixed settings for four labels---the return-only top 5\% ($y_{\text{raw}}$) and revenue-CAGR thresholds of 5\%, 10\% (the main label) and 15\%---and compares each with its own 1,000 random rankings, because positive rates differ across labels. E5 was specified before it was run and is not used to choose a label.
 
 \textbf{Pre-specified criteria (V).} A ranking result counts as better than chance only if it exceeds the 95th percentile of the 1,000 random draws; an E4 difference counts only if its bootstrap 95\% CI excludes zero.
 
@@ -320,8 +320,27 @@ Mean verification rounds & \multicolumn{3}{l}{1.53} \\
 
 \textbf{E4 (RQ3).} Table~\ref{tab:e4}: all 540 reports were completed. $^{\dagger}$Rule-flag accuracy (share of the two red-flag decisions matching the answer key) was not among the pre-specified E4 metrics but is computed from the same answer key; we report it as a supplementary metric. The direct LLM fills almost every field but computes about 38\% of the figures wrongly; the gap is nearly identical in each round (0.376, 0.372, 0.384). The agent's accuracy remains 1.000 when template reports are excluded, so the result is not driven by fallbacks; the price is that 10.4\% of reports fail all three verification rounds, and three samples fall back in all repetitions.
 
+\begin{table}[t]
+\centering
+\caption{E5 Label Sensitivity (LightGBM Retrained per Label; PR-AUC / P@50)}
+\label{tab:e5}
+\small
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+Label & Pos.\ rate & 2018 & 2019 & 2020 \\
+\midrule
+Return top 5\% & 5.0--5.1\% & 0.059 / .04 & 0.070 / .06 & \textbf{0.084} / .10 \\
+CAGR $\geq$ 5\% & 3.9--4.5\% & 0.059 / .06 & 0.047 / .04 & \textbf{0.085} / .08 \\
+CAGR $\geq$ 10\% (main) & 2.7--3.9\% & \textbf{0.082} / .02 & 0.035 / .04 & \textbf{0.081} / \textbf{.10} \\
+CAGR $\geq$ 15\% & 2.0--3.0\% & \textbf{0.095} / \textbf{.08} & 0.026 / .02 & 0.054 / \textbf{.08} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{E5 (label sensitivity).} Table~\ref{tab:e5}: bold values exceed the 95th percentile of random rankings for the same label. With the return-only label or a 5\% revenue threshold, LightGBM beats chance only on round-3 PR-AUC; with 10\% or 15\% thresholds it beats chance in more rounds and metrics. Fundamental features thus rank revenue-confirmed winners better than pure return winners, which supports the fundamentally confirmed label. No threshold is best in all rounds (15\% leads in round 1 but misses round-3 PR-AUC, with only 11 training positives in round 1), so the main label stays at 10\%. Round 2 beats chance under none of the four labels, so its weakness in E1 is not caused by the label definition.
+
 \subsection{Effectiveness and Threats (V)}
-By the pre-specified criteria, RQ3 is answered clearly, whereas RQ1 is answered only partially: LightGBM shows ranking skill in two of three overlapping rounds, with 22--31 positives per round, so one additional hit in the top 20 changes Precision@20 by 0.05. E4 checks only the 11 key figures and rule decisions, not the quality of the prose, and uses one LLM version. Delisted firms lack some financial statements in FinMind, delisting proceeds are approximated by the last trade, and FinMind does not provide restatement history.
+By the pre-specified criteria, RQ3 is answered clearly, whereas RQ1 is answered only partially: LightGBM shows ranking skill in two of three overlapping rounds, a pattern that holds qualitatively across revenue thresholds (E5), with 22--31 positives per round, so one additional hit in the top 20 changes Precision@20 by 0.05. E4 checks only the 11 key figures and rule decisions, not the quality of the prose, and uses one LLM version. Delisted firms lack some financial statements in FinMind, delisting proceeds are approximated by the last trade, and FinMind does not provide restatement history.
 
 % ---------------- Conclusion (W-Z) ----------------
 \section{Conclusion and Future Work}
@@ -331,9 +350,9 @@ By the pre-specified criteria, RQ3 is answered clearly, whereas RQ1 is answered 
 
 \textbf{Strengths (X).} The separation of computation and language yields reports with no unverified figures (100\% accuracy versus 62.3\% for a direct LLM), and every ranking is accompanied by SHAP attributions, resolved analog cases and literature-based red flags.
 
-\textbf{Yields (Y).} LightGBM beats 1,000 random rankings in two of three test years, simple factor rules and a Yartseva-inspired rule do not, and the U.S.\ ten-bagger characteristics largely fail to transfer to Taiwan; momentum and revenue growth are the most consistent signals.
+\textbf{Yields (Y).} LightGBM beats 1,000 random rankings in two of three test years, simple factor rules and a Yartseva-inspired rule do not, and the U.S.\ ten-bagger characteristics largely fail to transfer to Taiwan; momentum and revenue growth are the most consistent signals. Ranking skill is weaker for a return-only label than for revenue-confirmed labels.
 
-\textbf{Limitations and future work (Z).} Ranking skill is unstable across rounds and rests on few positives; the sample covers only TWSE-listed firms, only one LLM is tested, and portfolio returns are gross of costs. Future work includes sensitivity analysis of the horizon, label and thresholds, human evaluation of report prose, additional PiT features such as foreign ownership, and a market-wide screening interface. \emph{Multibagger Scout is a research prototype and does not constitute investment advice.}
+\textbf{Limitations and future work (Z).} Ranking skill is unstable across rounds and rests on few positives; the sample covers only TWSE-listed firms, only one LLM is tested, and portfolio returns are gross of costs. Future work includes sensitivity to a three-year horizon and to the end-price averaging window, human evaluation of report prose, additional PiT features such as foreign ownership, and a market-wide screening interface. \emph{Multibagger Scout is a research prototype and does not constitute investment advice.}
 
 % ---------------- References ----------------
 \begin{thebibliography}{99}
