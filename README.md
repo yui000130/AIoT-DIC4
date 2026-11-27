@@ -8,8 +8,8 @@
 
 | 文件 | 內容 | 狀態 |
 | --- | --- | --- |
-| [ICEIB 2027 論文草稿 (LaTeX)](ICEIB%20paper/main.tex) | IEEE `IEEEtran` 雙欄研討會論文，章節對應 A–Z 規範 | 2026-11-26 依 v0.8 與 E1–E4 結果重寫 |
-| [ICEIB 2027 論文草稿 (PDF)](ICEIB%20paper/IEEEtran.pdf) | Overleaf 編譯產出的 PDF | **舊版**，需以新版 `main.tex` 在 Overleaf 重新編譯 |
+| [ICEIB 2027 論文草稿 (LaTeX檔)](ICEIB%20paper/main.tex) | IEEE `IEEEtran` 雙欄研討會論文，章節對應 A–Z 規範 | 2026-11-26 依 v0.8 與 E1–E4 結果重寫 |
+| [ICEIB 2027 論文草稿 (PDF檔)](ICEIB%20paper/IEEEtran.pdf) | Overleaf 編譯產出的 PDF | **舊版**，需以新版 `main.tex` 在 Overleaf 重新編譯 |
 | [OpenSpec 論文規格設定](openspec/config.yaml) | ICEIB + A–Z 寫作規範與 `000`–`006` 章節 Changes | 2026-11-26 更新 |
 | [專業摘要](專業摘要.md) | 約 500 字中文專業摘要 | 2026-11-26 加入實驗結果 |
 | [專題設計規範檢核](專題設計規範檢核.md) | 依 A2Z outline（2020 A-Z SOP）逐章檢核 | 原檢核保留，開頭加上目前補齊狀態 |
